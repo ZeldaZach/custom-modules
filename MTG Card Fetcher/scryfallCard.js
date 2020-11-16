@@ -8,10 +8,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -36,17 +36,35 @@
         var sender = event.getSender(),
             command = event.getCommand(),
             args = event.getArgs(),
-            card_name = args.join(" ");
+            card_name = args.join(" ").trim();
 
         const scryfall_api = "https://api.scryfall.com/cards/named?fuzzy=";
 
         if (command.equalsIgnoreCase("card")) {
-            const url = scryfall_api.concat(encodeURIComponent(card_name));        
+            if (card_name.length == 0 || $.isBot(sender)) {
+                return;
+            }
+
+            const url = scryfall_api.concat(encodeURIComponent(card_name));
             const data = JSON.parse($.customAPI.get(url).content);
 
             // Error returned by Scryfall
             if (data.status === 404) {
                 $.say($.whisperPrefix(sender) + data.details);
+                return;
+            }
+
+            // Split cards are annoying, so we will only show
+            // Rules text for them to save space
+            if (data.card_faces) {
+                var response = data.name + " | ";
+                for (index = 0; index < data.card_faces.length; index++) {
+                    response += data.card_faces[index].oracle_text;
+                    if (index < data.card_faces.length - 1) {
+                        response += " // ";
+                    }
+                }
+                $.say(response.substring(0, 500));
                 return;
             }
 
@@ -66,7 +84,7 @@
                 + data.type_line + extra_component + " | "
                 + data.oracle_text;
 
-            $.say(response);
+            $.say(response.substring(0, 500));
             return;
         }
     });
@@ -76,7 +94,7 @@
      */
     $.bind('initReady', function() {
         if ($.bot.isModuleEnabled('./custom/scryfallCard.js')) {
-            $.registerChatCommand('./custom/scryfallCard.js', 'card', 7);
+            $.registerChatCommand('./custom/scryfallCard.js', 'card', 7); // All users
         }
     });
 })();
